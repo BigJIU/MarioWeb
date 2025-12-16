@@ -4,6 +4,8 @@ import os
 import struct
 import uuid
 from datetime import datetime
+import argparse
+import sys
 
 from IDManager import idManager
 
@@ -237,12 +239,33 @@ def saveRepFile(path, filename, content):
             actionList.append(serializeAction(actionsInput))
         except Exception:
             continue
-
     cp = list(map(int, actionList))
     file_dir = os.path.join(os.getcwd(), path)
     file_path = os.path.join(file_dir, filename + ".rep")
     with open(file_path, 'wb') as f:
         f.write(b''.join(struct.pack('B', c) for c in cp))
+
+def deserializeAction(action_byte):
+    actions = [False] * 7
+    for i in range(1, 6):
+        if (action_byte >> (i - 1)) & 1:
+            actions[i] = True
+    return actions
+
+
+def loadRepFile(path, filename):
+    file_dir = os.path.join(os.getcwd(), path)
+    file_path = os.path.join(file_dir, filename)
+    action_list = []
+    try:
+        with open(file_path, 'rb') as f:
+            byte_list = f.read()
+            for byte in byte_list:
+                action_list.append(deserializeAction(byte))
+        sys.stdout.write("Loaded actions from %s:\n" % filename)
+        sys.stdout.write(str(action_list) + '\n')
+    except FileNotFoundError:
+        sys.stdout.write(f"File not found: {file_path}\n")
 
 
 def serializeAction(actions):
@@ -262,6 +285,11 @@ def saveJsonFile(path, filename, content):
 
 
 if __name__ == '__main__':
-    #saveRepFile(replayDataPath, "null_test.rep", testJson)
-    app.run(host='0.0.0.0', port=80, debug=False)
-    # app.run()
+    parser = argparse.ArgumentParser(description='Run the Flask app or parse a .rep file.')
+    parser.add_argument('--parse', type=str, help='The name of the .rep file to parse.')
+    args = parser.parse_args()
+
+    if args.parse:
+        loadRepFile(replayDataPath, args.parse)
+    else:
+        app.run(host='0.0.0.0', port=80, debug=False)
